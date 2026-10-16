@@ -1,0 +1,195 @@
+apiVersion: fluxcd.controlplane.io/v1
+kind: ResourceSetInputProvider
+metadata:
+  name: apps
+  namespace: flux-system
+spec:
+  type: Static
+  defaultValues:
+    apps:
+      # Debug pod with psql and the voters database's credentials, from the voters repository's debug folder. Its
+      # ExternalSecret reads them from Vault at apps/voters-debug/voters-db, written by the voters repository's
+      # bin/db-vault-secret.sh, so there are no secrets here
+      - name: voters-debug
+        namespace: voters
+        source:
+          sourceGitServer: github.com
+          sourceGitHubOrg: pc-dae-voters
+          sourceGitHubRepo: voters
+          sourceBranch: tofu-controller
+          sourcePath: debug
+
+      - name: otel
+        namespace: otel
+        source:
+          sourceGitServer: github.com
+          sourceGitHubOrg: pc-dae
+          sourceGitHubRepo: observability
+          sourceBranch: main
+          sourceSecret: observability-git-token
+        config:
+          otelVictoriaMetrics: "true"
+          otelLoki: "true"
+          # No splunk app on the EKS cluster
+          otelSplunk: "false"
+          # EKS manages kube-controller-manager and kube-scheduler, they can't be scraped
+          otelControlPlaneComponents: "false"
+        secrets:
+          splunk-hec-token:
+            hecToken: ${SPLUNK_HEC_TOKEN}
+          newrelic-key:
+            licenseKey: ${NEWRELIC_LICENSE_KEY}
+          observability-git-token:
+            password: ${GITHUB_TOKEN_OBSERV_READ}
+            username: git
+        releases:
+          - name: otel-node
+            chart: ./otel/node/otel-node
+            values:
+              otelNamespace: ${nameSpace}
+              clusterType: ${clusterType}
+              clusterName: ${clusterName}${suffix:=}
+              hostSuffix: ${suffix:=}
+              targets:
+                newrelic:
+                  enabled: ${otelNewRelic:=true}
+                splunk:
+                  enabled: ${otelSplunk:=true}
+                victoriametrics:
+                  enabled: ${otelVictoriaMetrics:=false}
+                loki:
+                  enabled: ${otelLoki:=false}
+          - name: otel-cluster
+            chart: ./otel/cluster/otel-cluster
+            values:
+              otelNamespace: ${nameSpace}
+              clusterType: ${clusterType}
+              clusterName: ${clusterName}${suffix:=}
+              hostSuffix: ${suffix:=}
+              targets:
+                newrelic:
+                  enabled: ${otelNewRelic:=true}
+                splunk:
+                  enabled: ${otelSplunk:=true}
+                victoriametrics:
+                  enabled: ${otelVictoriaMetrics:=false}
+                loki:
+                  enabled: ${otelLoki:=false}
+              platforms:
+                kubernetes:
+                  controlPlaneComponents: ${otelControlPlaneComponents:=false}
+          - name: otel-gateway
+            chart: ./otel/gateway/otel-gateway
+            values:
+              otelNamespace: ${nameSpace}
+              clusterType: ${clusterType}
+              clusterName: ${clusterName}${suffix:=}
+              hostSuffix: ${suffix:=}
+              targets:
+                newrelic:
+                  enabled: ${otelNewRelic:=true}
+                splunk:
+                  enabled: ${otelSplunk:=true}
+                victoriametrics:
+                  enabled: ${otelVictoriaMetrics:=false}
+                loki:
+                  enabled: ${otelLoki:=false}
+
+      - name: victoria-metrics
+        namespace: victoria-metrics
+        source:
+          sourceGitServer: github.com
+          sourceGitHubOrg: pc-dae
+          sourceGitHubRepo: observability
+          sourceBranch: main
+          sourceSecret: observability-git-token
+        secrets:
+          observability-git-token:
+            password: ${GITHUB_TOKEN_OBSERV_READ}
+            username: git
+        releases:
+          - name: victoria-metrics
+            chart: ./victoria-metrics/victoria-metrics
+            timeout: 10m
+            values:
+              victoria-metrics-k8s-stack:
+                vmsingle:
+                  ingress:
+                    enabled: true
+                    ingressClassName: ${ingressClassName}
+                    annotations:
+                      cert-manager.io/cluster-issuer: local-ca-issuer
+                    hosts:
+                      - victoria-metrics.${dnsSuffix}
+                    tls:
+                      - secretName: victoria-metrics-tls
+                        hosts:
+                          - victoria-metrics.${dnsSuffix}
+
+      - name: loki
+        namespace: loki
+        source:
+          sourceGitServer: github.com
+          sourceGitHubOrg: pc-dae
+          sourceGitHubRepo: observability
+          sourceBranch: main
+          sourceSecret: observability-git-token
+        secrets:
+          observability-git-token:
+            password: ${GITHUB_TOKEN_OBSERV_READ}
+            username: git
+        releases:
+          - name: loki
+            chart: ./loki/loki
+            timeout: 10m
+            values:
+              loki:
+                ingress:
+                  enabled: true # Loki has no UI, / redirects to /services which lists the state of the Loki components
+                  ingressClassName: ${ingressClassName}
+                  annotations:
+                    cert-manager.io/cluster-issuer: local-ca-issuer
+                    nginx.ingress.kubernetes.io/app-root: /services
+                  paths:
+                    queryFrontend:
+                      - / # All components run in the single binary, route every path to it
+                  hosts:
+                    - loki.${dnsSuffix}
+                  tls:
+                    - secretName: loki-tls
+                      hosts:
+                        - loki.${dnsSuffix}
+
+      - name: grafana
+        namespace: grafana
+        source:
+          sourceGitServer: github.com
+          sourceGitHubOrg: pc-dae
+          sourceGitHubRepo: observability
+          sourceBranch: main
+          sourceSecret: observability-git-token
+        secrets:
+          observability-git-token:
+            password: ${GITHUB_TOKEN_OBSERV_READ}
+            username: git
+          grafana-admin: # Grafana admin login, set GRAFANA_ADMIN_PASSWORD in your bash profile
+            admin-user: admin
+            admin-password: ${GRAFANA_ADMIN_PASSWORD}
+        releases:
+          - name: grafana
+            chart: ./grafana/grafana
+            values:
+              grafana:
+                admin:
+                  existingSecret: grafana-admin
+                ingress:
+                  enabled: true
+                  ingressClassName: ${ingressClassName}
+                  annotations:
+                    cert-manager.io/cluster-issuer: local-ca-issuer
+                  hosts:
+                    - grafana.${dnsSuffix}
+                  tls:
+                    - secretName: grafana-tls
+                      hosts:
+                        - grafana.${dnsSuffix}

@@ -1,0 +1,38 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-config
+  namespace: flux-system
+data:
+  clusterType: "eks"
+  kindCluster: "false"
+  kubeletInsecureTLS: "true"
+  storageClass: "ebs-csi-default-sc"
+  ingressClassName: "nginx"
+  clusterName: "voters"
+  dnsSuffix: "54.73.221.81.nip.io"
+  clusterIP: "172.20.95.238"
+  scmType: "github"
+  registry: "paulcalrtondae"
+  GitHubServer: "github.com"
+  GitHubOrg: "pc-dae-gitops"
+  GitHubRepo: "aws-eks-voters"
+  GitHubBranch: "main"
+  globalGitHubOrg: "pc-dae-gitops"
+  globalGitHubRepo: "mac-k8s"
+  globalGitHubBranch: "main"
+  userEmail: "paul.carlton@dae.mn"
+  vault_url: "https://vault.54.73.221.81.nip.io"
+  vaultCaConfigMap: "local-ca"
+  vaultCaKey: "CA.cer"
+  commitUser: "paul-carlton"
+  mirrorRegistry: ""
+  proxy: "false"
+  certs: "false"
+  imagePullSecretName: ""
+  vaultIngress: ""
+  # Cluster repository folder with the cluster's apps, see local-cluster/release.yaml and local-cluster/resourcesets
+  targetPath: "./target-cluster"
+  # Comma separated CIDR blocks that can reach the ingress load balancer on cloud clusters, e.g. eks
+  ingressSourceRanges: "81.159.91.147/32"

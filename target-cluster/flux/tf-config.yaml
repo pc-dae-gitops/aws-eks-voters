@@ -1,0 +1,19 @@
+# Settings for Terraform objects deployed to an EKS cluster, rendered to <target_path>/flux/tf-config.yaml in the cluster
+# repository by setup.sh. Use them in a Terraform object's backendConfig, using its Kustomization's postBuild
+# substituteFrom, and as variables, using varsFrom. The state is in the same S3 bucket and lock table as the EKS
+# cluster's, use a key prefixed with the application's name. The runner pods' AWS access is the tf-runner IAM role,
+# see terraform/aws/eks/tf-runner.tf
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tf-config
+  namespace: flux-system
+data:
+  region: "eu-west-1"
+  eks_cluster_name: "voters"
+  tf_state_bucket: "tfstate-914216784866-eu-west-1-voters"
+  tf_lock_table: "tfstate-lock-voters"
+  owner_email: "paul.carlton@dae.mn"
+  # Comma separated CIDR blocks allowed to SSH to VMs, the same as the ingress load balancer's, default this machine's
+  # public IP address
+  ssh_cidrs: "81.159.91.147/32"

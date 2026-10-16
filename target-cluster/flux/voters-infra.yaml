@@ -1,0 +1,40 @@
+# The voters application's AWS infrastructure, the Terraform objects in the voters repository's infra/aws/flux folder,
+# applied by tofu-controller, which is deployed by core-eks. The Terraform objects' backend configuration and variables
+# use the tf-config ConfigMap's settings, see mac-k8s resources/eks-tf-config.yaml
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: voters
+  namespace: flux-system
+spec:
+  interval: 5m0s
+  url: https://github.com/pc-dae-voters/voters
+  ref:
+    branch: tofu-controller
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: voters-infra
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: core-eks
+  interval: 5m0s
+  retryInterval: 30s
+  timeout: 2m
+  path: ./infra/aws/flux
+  # Pruning a Terraform object destroys its AWS resources, use the voters repository's bin/teardown-aws.sh
+  prune: true
+  # Creating the infrastructure takes longer than the Kustomization timeout, see the voters bin/setup-aws.sh
+  wait: false
+  sourceRef:
+    kind: GitRepository
+    name: voters
+  postBuild:
+    substitute:
+      # The branch the manager VM clones, the GitRepository's
+      voters_git_branch: tofu-controller
+    substituteFrom:
+      - kind: ConfigMap
+        name: tf-config
