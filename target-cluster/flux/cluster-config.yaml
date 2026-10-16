@@ -36,3 +36,7 @@ data:
   targetPath: "./target-cluster"
   # Comma separated CIDR blocks that can reach the ingress load balancer on cloud clusters, e.g. eks
   ingressSourceRanges: "81.159.91.147/32"
+  # Ingress domain of the target cluster created by setup.sh --target, e.g. eks, see target_dns_suffix in bin/lib.sh.
+  # Used by the cluster's apps, e.g. otel sends the kind cluster's telemetry to the EKS cluster's VictoriaMetrics and
+  # Loki. Empty until the target cluster's ingress domain is set
+  targetDnsSuffix: ""
