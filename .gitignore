@@ -1,0 +1,8 @@
+**/*.key
+.DS_Store
+resources/.vault-init.json
+resources/secrets
+resources/*.pem
+resources/*.key
+creds/*
+**/.vault-init.json

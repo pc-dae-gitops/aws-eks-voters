@@ -1,0 +1,42 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-config
+  namespace: flux-system
+data:
+  clusterType: "k8s"
+  kindCluster: "true"
+  kubeletInsecureTLS: "false"
+  storageClass: "standard"
+  ingressClassName: "nginx"
+  clusterName: "k8s-paul-carlton-pauls-macbook-air"
+  dnsSuffix: "kubernetes.local.internal"
+  clusterIP: "10.96.89.140"
+  scmType: "github"
+  registry: "paulcalrtondae"
+  GitHubServer: "github.com"
+  GitHubOrg: "pc-dae-gitops"
+  GitHubRepo: "aws-eks-voters"
+  GitHubBranch: "main"
+  globalGitHubOrg: "pc-dae-gitops"
+  globalGitHubRepo: "mac-k8s"
+  globalGitHubBranch: "main"
+  userEmail: "paul.carlton@dae.mn"
+  vault_url: "https://vault.kubernetes.local.internal"
+  vaultCaConfigMap: "local-ca"
+  vaultCaKey: "CA.cer"
+  commitUser: "paul-carlton"
+  mirrorRegistry: ""
+  proxy: "false"
+  certs: "false"
+  imagePullSecretName: ""
+  vaultIngress: ""
+  # Cluster repository folder with the cluster's apps, see local-cluster/release.yaml and local-cluster/resourcesets
+  targetPath: "./local-cluster"
+  # Comma separated CIDR blocks that can reach the ingress load balancer on cloud clusters, e.g. eks
+  ingressSourceRanges: ""
+  # Ingress domain of the target cluster created by setup.sh --target, e.g. eks, see target_dns_suffix in bin/lib.sh.
+  # Used by the cluster's apps, e.g. otel sends the kind cluster's telemetry to the EKS cluster's VictoriaMetrics and
+  # Loki. Empty until the target cluster's ingress domain is set
+  targetDnsSuffix: "54.73.221.81.nip.io"

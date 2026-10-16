@@ -1,0 +1,104 @@
+apiVersion: fluxcd.controlplane.io/v1
+kind: ResourceSetInputProvider
+metadata:
+  name: apps
+  namespace: flux-system
+spec:
+  type: Static
+  defaultValues:
+    apps:
+      # Sends the kind cluster's telemetry to the EKS cluster's victoria-metrics and loki apps, see
+      # target-cluster/apps/inputs/apps.yaml. targetDnsSuffix is the EKS cluster's ingress domain, the EKS cluster's
+      # ingress certificates are issued by the same CA as the kind cluster's, the local-ca ConfigMap
+      - name: otel
+        namespace: otel
+        source:
+          sourceGitServer: github.com
+          sourceGitHubOrg: pc-dae
+          sourceGitHubRepo: observability
+          sourceBranch: main
+          sourceSecret: observability-git-token
+        config:
+          # Only to the EKS cluster's VictoriaMetrics and Loki, not New Relic, to keep within its free data limit
+          otelNewRelic: "false"
+          otelVictoriaMetrics: "true"
+          otelLoki: "true"
+          # No splunk app
+          otelSplunk: "false"
+          # kind-cluster.sh exposes kube-controller-manager and kube-scheduler's metrics
+          otelControlPlaneComponents: "true"
+        secrets:
+          splunk-hec-token:
+            hecToken: ${SPLUNK_HEC_TOKEN}
+          newrelic-key:
+            licenseKey: ${NEWRELIC_LICENSE_KEY}
+          observability-git-token:
+            password: ${GITHUB_TOKEN_OBSERV_READ}
+            username: git
+        releases:
+          - name: otel-node
+            # The collectors are replaced one at a time, which takes longer than the default 5m on kind
+            timeout: 15m
+            chart: ./otel/node/otel-node
+            values:
+              otelNamespace: ${nameSpace}
+              clusterType: ${clusterType}
+              clusterName: ${clusterName}${suffix:=}
+              hostSuffix: ${suffix:=}
+              targets:
+                newrelic:
+                  enabled: ${otelNewRelic:=true}
+                splunk:
+                  enabled: ${otelSplunk:=true}
+                victoriametrics:
+                  enabled: ${otelVictoriaMetrics:=false}
+                loki:
+                  enabled: ${otelLoki:=false}
+          - name: otel-cluster
+            timeout: 15m
+            chart: ./otel/cluster/otel-cluster
+            values:
+              otelNamespace: ${nameSpace}
+              clusterType: ${clusterType}
+              clusterName: ${clusterName}${suffix:=}
+              hostSuffix: ${suffix:=}
+              targets:
+                newrelic:
+                  enabled: ${otelNewRelic:=true}
+                splunk:
+                  enabled: ${otelSplunk:=true}
+                # VictoriaMetrics and Loki are on the EKS cluster, their pods are scraped by its otel-cluster
+                victoriametrics:
+                  enabled: ${otelVictoriaMetrics:=false}
+                  inCluster: false
+                loki:
+                  enabled: ${otelLoki:=false}
+                  inCluster: false
+              platforms:
+                kubernetes:
+                  controlPlaneComponents: ${otelControlPlaneComponents:=false}
+          - name: otel-gateway
+            timeout: 15m
+            chart: ./otel/gateway/otel-gateway
+            values:
+              otelNamespace: ${nameSpace}
+              clusterType: ${clusterType}
+              clusterName: ${clusterName}${suffix:=}
+              hostSuffix: ${suffix:=}
+              targets:
+                newrelic:
+                  enabled: ${otelNewRelic:=true}
+                splunk:
+                  enabled: ${otelSplunk:=true}
+                victoriametrics:
+                  enabled: ${otelVictoriaMetrics:=false}
+                  endpoint: https://victoria-metrics.${targetDnsSuffix}/api/v1/write
+                  tls:
+                    caConfigMap: local-ca
+                    caKey: CA.cer
+                loki:
+                  enabled: ${otelLoki:=false}
+                  endpoint: https://loki.${targetDnsSuffix}/otlp
+                  tls:
+                    caConfigMap: local-ca
+                    caKey: CA.cer

@@ -1,0 +1,24 @@
+# EKS target cluster settings, rendered to local-cluster/flux/eks-config.yaml in the cluster repository by
+# setup.sh --target eks. Used by the eks Terraform object's varsFrom, the keys are the Terraform variable names, see
+# terraform/aws/eks/variables.tf, and its backend configuration. Values are strings, lists are comma separated
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: target-config
+  namespace: flux-system
+data:
+  region: "eu-west-1"
+  cluster_name: "voters"
+  kubernetes_version: "1.36"
+  vpc_cidr: "10.0.0.0/16"
+  node_instance_types: "t3.large"
+  node_min_size: "2"
+  node_max_size: "4"
+  node_desired_size: "3"
+  # The latest when the cluster was created, kept when setup.sh --target eks is run again. Change it and commit and
+  # push this file to replace the nodes with a newer AMI, see eks-ami.sh
+  node_ami_release_version: "1.36.4-20261012"
+  endpoint_public_access_cidrs: "0.0.0.0/0"
+  owner_email: "paul.carlton@dae.mn"
+  tf_state_bucket: "tfstate-914216784866-eu-west-1-voters"
+  tf_lock_table: "tfstate-lock-voters"
