@@ -16,7 +16,7 @@ spec:
           sourceGitServer: github.com
           sourceGitHubOrg: pc-dae-voters
           sourceGitHubRepo: voters
-          sourceBranch: tofu-controller
+          sourceBranch: main
           sourcePath: debug
 
       - name: otel
